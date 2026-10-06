@@ -1,4 +1,3 @@
-
 import portrait from '../assets/portrait.jpg'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
@@ -56,14 +55,13 @@ function PortraitPlaceholder() {
   )
 }
 
-export default function Hero({ introReady = false }) {
+export default function Hero() {
   const root = useRef(null)
   const sceneWrap = useRef(null)
   const content = useRef(null)
   const nameRef = useRef(null)
   const portraitRef = useRef(null)
   const portraitPar = useRef(null)
-
   const input = useRef({
     mouse: { x: 0, y: 0 },
     scroll: 0,
@@ -71,63 +69,8 @@ export default function Hero({ introReady = false }) {
 
   const [active, setActive] = useState(true)
 
-  /*
-   * ============================================================
-   * IMPORTANT
-   *
-   * The Hero is already rendered behind the loader.
-   * Therefore we MUST hide its intro elements immediately.
-   *
-   * This prevents:
-   *
-   * visible name
-   *      ↓
-   * loader disappears
-   *      ↓
-   * name disappears
-   *      ↓
-   * name animates in
-   *
-   * Instead:
-   *
-   * hidden name
-   *      ↓
-   * loader disappears
-   *      ↓
-   * name animates in ONCE
-   * ============================================================
-   */
-
+  // Intro + scroll choreography
   useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.set('.hero-line .inner', {
-        yPercent: 110,
-      })
-
-      gsap.set('.hero-fade', {
-        y: 18,
-        opacity: 0,
-      })
-
-      gsap.set(portraitRef.current, {
-        opacity: 0,
-        scale: 0.96,
-      })
-    }, root)
-
-    return () => ctx.revert()
-  }, [])
-
-  /*
-   * ============================================================
-   * HERO INTRO
-   * Runs only after Loader is completely finished.
-   * ============================================================
-   */
-
-  useLayoutEffect(() => {
-    if (!introReady) return undefined
-
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: {
@@ -135,52 +78,35 @@ export default function Hero({ introReady = false }) {
         },
       })
 
-      tl.to(
+      tl.from(
         '.hero-line .inner',
         {
-          yPercent: 0,
+          yPercent: 110,
           duration: 1.3,
           stagger: 0.12,
         },
-        0.15,
+        0.2,
       )
-
-        .to(
+        .from(
           '.hero-fade',
           {
-            y: 0,
-            opacity: 1,
+            y: 18,
+            opacity: 0,
             duration: 1,
             stagger: 0.1,
           },
           '-=0.7',
         )
-
-        .to(
+        .from(
           portraitRef.current,
           {
-            opacity: 1,
-            scale: 1,
+            opacity: 0,
+            scale: 0.96,
             duration: 1.4,
-            ease: 'power3.out',
           },
-          0.35,
+          0.4,
         )
-    }, root)
 
-    return () => ctx.revert()
-  }, [introReady])
-
-  /*
-   * ============================================================
-   * SCROLL CHOREOGRAPHY
-   * ============================================================
-   */
-
-  useLayoutEffect(() => {
-    if (!introReady) return undefined
-
-    const ctx = gsap.context(() => {
       gsap
         .timeline({
           scrollTrigger: {
@@ -188,7 +114,6 @@ export default function Hero({ introReady = false }) {
             start: 'top top',
             end: 'bottom top',
             scrub: true,
-
             onUpdate: (self) => {
               input.current.scroll = self.progress
             },
@@ -217,17 +142,10 @@ export default function Hero({ introReady = false }) {
     }, root)
 
     return () => ctx.revert()
-  }, [introReady])
+  }, [])
 
-  /*
-   * ============================================================
-   * MOUSE PARALLAX
-   * ============================================================
-   */
-
+  // Subtle mouse parallax (desktop only)
   useEffect(() => {
-    if (!introReady) return undefined
-
     if (!isFinePointer() || prefersReducedMotion()) {
       return undefined
     }
@@ -283,21 +201,12 @@ export default function Hero({ introReady = false }) {
     return () => {
       window.removeEventListener('mousemove', onMove)
     }
-  }, [introReady])
+  }, [])
 
-  /*
-   * ============================================================
-   * PAUSE WEBGL WHEN HERO IS OFF SCREEN
-   * ============================================================
-   */
-
+  // Pause WebGL when the hero is off screen
   useEffect(() => {
-    if (!root.current) return undefined
-
     const io = new IntersectionObserver(
-      ([entry]) => {
-        setActive(entry.isIntersecting)
-      },
+      ([entry]) => setActive(entry.isIntersecting),
       {
         threshold: 0,
       },
@@ -314,50 +223,26 @@ export default function Hero({ introReady = false }) {
       ref={root}
       className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-ink"
     >
-      {/* ======================================================
-          3D BACKGROUND
-      ======================================================= */}
-
-      <div
-        ref={sceneWrap}
-        className="absolute inset-0"
-      >
-        <Scene3D
-          input={input}
-          active={active}
-        />
+      <div ref={sceneWrap} className="absolute inset-0">
+        <Scene3D input={input} active={active} />
       </div>
 
-      {/* Vignette */}
-
       <div className="hero-vignette pointer-events-none absolute inset-0" />
-
-      {/* ======================================================
-          HERO CONTENT
-      ======================================================= */}
 
       <div
         ref={content}
         className="relative z-10 flex h-full flex-col justify-end px-6 pb-8 pt-24 md:px-12 md:pb-10"
       >
-        {/* ====================================================
-            TOP LEFT
-        ===================================================== */}
-
+        {/* Top-left editorial label */}
         <div className="hero-fade absolute left-6 top-24 md:left-12 md:top-28">
-          <p className="eyebrow">
-            Executive Profile
-          </p>
+          <p className="eyebrow">Executive Profile</p>
 
           <p className="mt-2 text-[10px] tracking-[0.35em] text-white/35">
             24.47° N · 39.61° E
           </p>
         </div>
 
-        {/* ====================================================
-            PORTRAIT
-        ===================================================== */}
-
+        {/* Portrait */}
         <div
           ref={portraitRef}
           className="absolute right-6 top-[17svh] z-[5] w-[40vw] max-w-[190px] md:right-[7vw] md:top-[14svh] md:w-[24vw] md:max-w-[400px]"
@@ -379,21 +264,13 @@ export default function Hero({ introReady = false }) {
             </div>
 
             <span className="absolute -left-2 -top-2 h-4 w-4 border-l border-t border-gold" />
-
             <span className="absolute -right-2 -top-2 h-4 w-4 border-r border-t border-gold" />
           </div>
         </div>
 
-        {/* ====================================================
-            NAME
-        ===================================================== */}
-
-        <div
-          ref={nameRef}
-          className="relative z-10"
-        >
+        {/* Name */}
+        <div ref={nameRef} className="relative z-10">
           <h1 className="name-xl font-display font-extrabold leading-[0.9] tracking-[-0.03em] text-paper">
-
             <span className="hero-line block overflow-hidden">
               <span className="inner block">
                 {profile.first}
@@ -411,14 +288,10 @@ export default function Hero({ introReady = false }) {
                 {profile.last}
               </span>
             </span>
-
           </h1>
         </div>
 
-        {/* ====================================================
-            ROLE / LOCATION / EXPERIENCE
-        ===================================================== */}
-
+        {/* Role / place / experience */}
         <div className="hero-fade mt-8 flex flex-col gap-6 md:mt-10 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex items-center gap-4">
@@ -438,15 +311,11 @@ export default function Hero({ introReady = false }) {
             <span className="mr-2 font-display text-2xl tracking-normal text-gold">
               10+
             </span>
-
             YEARS OF PROFESSIONAL EXPERIENCE
           </p>
         </div>
 
-        {/* ====================================================
-            SCROLL CUE
-        ===================================================== */}
-
+        {/* Scroll cue */}
         <div className="hero-fade pointer-events-none absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-[10px] tracking-[0.4em] text-white/40 md:flex">
           SCROLL
 
