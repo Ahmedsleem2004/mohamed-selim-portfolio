@@ -7,6 +7,7 @@ export default function PreLoader({ onComplete }) {
   const ringRef = useRef(null)
   const progressRef = useRef(null)
   const glowRef = useRef(null)
+  const textRef = useRef(null)
 
   useEffect(() => {
     const root = rootRef.current
@@ -14,8 +15,9 @@ export default function PreLoader({ onComplete }) {
     const ring = ringRef.current
     const progress = progressRef.current
     const glow = glowRef.current
+    const text = textRef.current
 
-    if (!root || !anchor || !ring || !progress || !glow) return
+    if (!root || !anchor || !ring || !progress || !glow || !text) return
 
     const ctx = gsap.context(() => {
       gsap.set(root, {
@@ -25,8 +27,14 @@ export default function PreLoader({ onComplete }) {
       gsap.set(anchor, {
         opacity: 0,
         scale: 0.55,
-        y: 25,
+        y: 20,
         rotation: -8,
+      })
+
+      gsap.set(text, {
+        opacity: 0,
+        y: 12,
+        letterSpacing: '0.8em',
       })
 
       gsap.set(ring, {
@@ -45,7 +53,6 @@ export default function PreLoader({ onComplete }) {
         scale: 0.5,
       })
 
-      // Main intro
       const tl = gsap.timeline({
         onComplete: () => {
           onComplete?.()
@@ -55,7 +62,7 @@ export default function PreLoader({ onComplete }) {
       tl.to(glow, {
         opacity: 0.7,
         scale: 1,
-        duration: 0.55,
+        duration: 0.5,
         ease: 'power2.out',
       })
 
@@ -65,10 +72,10 @@ export default function PreLoader({ onComplete }) {
             opacity: 1,
             scale: 1,
             rotation: 0,
-            duration: 0.75,
+            duration: 0.7,
             ease: 'power3.out',
           },
-          '-=0.3',
+          '-=0.25',
         )
 
         .to(
@@ -85,16 +92,27 @@ export default function PreLoader({ onComplete }) {
         )
 
         .to(
+          text,
+          {
+            opacity: 1,
+            y: 0,
+            letterSpacing: '0.48em',
+            duration: 0.65,
+            ease: 'power3.out',
+          },
+          '-=0.35',
+        )
+
+        .to(
           progress,
           {
             scaleX: 1,
-            duration: 1.25,
+            duration: 1.15,
             ease: 'power2.inOut',
           },
-          '-=0.25',
+          '-=0.2',
         )
 
-        // Small breathing movement
         .to(anchor, {
           y: -5,
           duration: 0.35,
@@ -107,30 +125,28 @@ export default function PreLoader({ onComplete }) {
           ease: 'sine.inOut',
         })
 
-        // Exit
         .to(
-          [anchor, ring, glow],
+          [anchor, ring, glow, text],
           {
             opacity: 0,
-            scale: 1.08,
-            duration: 0.38,
+            scale: 1.06,
+            duration: 0.4,
             ease: 'power3.in',
           },
-          '+=0.05',
+          '+=0.03',
         )
 
         .to(
           root,
           {
             opacity: 0,
-            duration: 0.32,
+            duration: 0.4,
             ease: 'power2.inOut',
           },
-          '-=0.18',
+          '-=0.2',
         )
     }, root)
 
-    // Continuous ring rotation
     const spin = gsap.to(ring, {
       rotation: 360,
       duration: 2.4,
@@ -138,7 +154,6 @@ export default function PreLoader({ onComplete }) {
       ease: 'none',
     })
 
-    // Subtle glow pulse
     const pulse = gsap.to(glow, {
       scale: 1.12,
       opacity: 0.9,
@@ -170,7 +185,7 @@ export default function PreLoader({ onComplete }) {
         }}
       />
 
-      {/* Very subtle center light */}
+      {/* Center glow */}
       <div
         ref={glowRef}
         className="pointer-events-none absolute h-72 w-72 rounded-full"
@@ -181,13 +196,12 @@ export default function PreLoader({ onComplete }) {
         }}
       />
 
-      <div className="relative flex h-48 w-48 items-center justify-center">
-        {/* Outer technical ring */}
+      <div className="relative flex h-64 w-48 flex-col items-center justify-center">
+        {/* Ring */}
         <div
           ref={ringRef}
-          className="absolute inset-0 rounded-full border border-[#c9a227]/20"
+          className="absolute top-2 flex h-48 w-48 items-center justify-center rounded-full border border-[#c9a227]/20"
         >
-          {/* Gold moving point */}
           <span
             className="absolute left-1/2 top-[-3px] h-[5px] w-[5px] -translate-x-1/2 rounded-full bg-[#c9a227]"
             style={{
@@ -195,10 +209,8 @@ export default function PreLoader({ onComplete }) {
             }}
           />
 
-          {/* Secondary ring */}
           <span className="absolute inset-[10px] rounded-full border border-white/[0.035]" />
 
-          {/* Small technical marks */}
           <span className="absolute left-1/2 top-[-8px] h-4 w-px -translate-x-1/2 bg-[#c9a227]/40" />
           <span className="absolute bottom-[-8px] left-1/2 h-4 w-px -translate-x-1/2 bg-[#c9a227]/20" />
           <span className="absolute left-[-8px] top-1/2 h-px w-4 -translate-y-1/2 bg-[#c9a227]/20" />
@@ -208,7 +220,7 @@ export default function PreLoader({ onComplete }) {
         {/* Anchor */}
         <div
           ref={anchorRef}
-          className="relative flex items-center justify-center"
+          className="relative mt-[-12px]"
           style={{
             filter: 'drop-shadow(0 0 10px rgba(201,162,39,0.18))',
           }}
@@ -220,7 +232,6 @@ export default function PreLoader({ onComplete }) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Crown */}
             <circle
               cx="41"
               cy="10"
@@ -236,7 +247,6 @@ export default function PreLoader({ onComplete }) {
               fill="#c9a227"
             />
 
-            {/* Vertical shaft */}
             <path
               d="M41 17V61"
               stroke="#c9a227"
@@ -244,7 +254,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinecap="round"
             />
 
-            {/* Cross bar */}
             <path
               d="M25 30H57"
               stroke="#c9a227"
@@ -252,7 +261,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinecap="round"
             />
 
-            {/* Left arm */}
             <path
               d="M41 61C41 61 31 61 23 54C17 49 15 42 15 35"
               stroke="#c9a227"
@@ -260,7 +268,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinecap="round"
             />
 
-            {/* Right arm */}
             <path
               d="M41 61C41 61 51 61 59 54C65 49 67 42 67 35"
               stroke="#c9a227"
@@ -268,7 +275,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinecap="round"
             />
 
-            {/* Left fluke */}
             <path
               d="M15 35L9 41"
               stroke="#c9a227"
@@ -283,7 +289,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinecap="round"
             />
 
-            {/* Right fluke */}
             <path
               d="M67 35L61 41"
               stroke="#c9a227"
@@ -298,7 +303,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinecap="round"
             />
 
-            {/* Bottom crown / base */}
             <path
               d="M31 66L41 78L51 66"
               stroke="#c9a227"
@@ -307,7 +311,6 @@ export default function PreLoader({ onComplete }) {
               strokeLinejoin="round"
             />
 
-            {/* Tiny center detail */}
             <circle
               cx="41"
               cy="61"
@@ -315,6 +318,17 @@ export default function PreLoader({ onComplete }) {
               fill="#c9a227"
             />
           </svg>
+        </div>
+
+        {/* BUTCHER */}
+        <div
+          ref={textRef}
+          className="relative z-10 mt-2 whitespace-nowrap text-[9px] font-medium uppercase text-[#c9a227]"
+          style={{
+            textShadow: '0 0 10px rgba(201,162,39,0.25)',
+          }}
+        >
+          BUTCHER
         </div>
       </div>
 
