@@ -1,7 +1,7 @@
-
 import { useCallback, useEffect, useState } from 'react'
 import { ScrollTrigger } from './lib/gsap'
 
+import PreLoader from './components/PreLoader'
 import Loader from './components/Loader'
 import Cursor from './components/Cursor'
 import Navigation from './components/Navigation'
@@ -17,13 +17,22 @@ import Contact from './components/Contact'
 import Footer from './components/Footer'
 
 export default function App() {
-  const [loaderDone, setLoaderDone] = useState(false)
+  // 0 = Anchor PreLoader
+  // 1 = Video Loader
+  // 2 = Portfolio
+  const [stage, setStage] = useState(0)
 
-  const handleDone = useCallback(() => {
-    setLoaderDone(true)
+  const preLoaderDone = useCallback(() => {
+    setStage(1)
   }, [])
 
-  // Always start from the top on a fresh page load
+  const videoLoaderDone = useCallback(() => {
+    setStage(2)
+  }, [])
+
+  const loaderDone = stage === 2
+
+  // Always start at top
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual'
@@ -32,7 +41,7 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [])
 
-  // Refresh ScrollTrigger after fonts/images/page load
+  // Refresh ScrollTrigger when page resources are ready
   useEffect(() => {
     const refresh = () => {
       requestAnimationFrame(() => {
@@ -51,30 +60,51 @@ export default function App() {
     }
   }, [])
 
-  // Refresh everything after loader disappears
+  // Refresh after final loader
   useEffect(() => {
-    if (!loaderDone) return undefined
+    if (!loaderDone) return
 
-    const timer = requestAnimationFrame(() => {
+    const timer = window.setTimeout(() => {
       ScrollTrigger.refresh()
       window.scrollTo(0, 0)
-    })
+    }, 100)
 
-    return () => cancelAnimationFrame(timer)
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [loaderDone])
 
   return (
     <>
-      {/* =====================================================
+      {/* Cursor */}
+      <div
+        style={{
+          visibility: loaderDone ? 'visible' : 'hidden',
+        }}
+      >
+        <Cursor />
+      </div>
+
+      {/* Navigation */}
+      <div
+        style={{
+          visibility: loaderDone ? 'visible' : 'hidden',
+        }}
+      >
+        <Navigation />
+      </div>
+
+      {/* =========================
           PORTFOLIO
-          The entire website exists behind the loader.
-      ====================================================== */}
-
-      <Cursor />
-
-      <Navigation />
-
-      <main className="relative">
+          Completely hidden until
+          video loader is finished.
+      ========================== */}
+      <main
+        className="relative"
+        style={{
+          visibility: loaderDone ? 'visible' : 'hidden',
+        }}
+      >
         <Hero introReady={loaderDone} />
 
         <ExecutiveStatement />
@@ -94,18 +124,36 @@ export default function App() {
         <Contact />
       </main>
 
-      <Footer />
+      {/* Footer */}
+      <div
+        style={{
+          visibility: loaderDone ? 'visible' : 'hidden',
+        }}
+      >
+        <Footer />
+      </div>
 
-      {/* =====================================================
-          LOADER
-          Stays above the portfolio until it reaches 100%.
-      ====================================================== */}
-
-      {!loaderDone && (
-        <Loader onComplete={handleDone} />
+      {/* =========================
+          STAGE 1
+          Anchor PreLoader
+      ========================== */}
+      {stage === 0 && (
+        <PreLoader
+          onComplete={preLoaderDone}
+        />
       )}
 
-      {/* Global grain */}
+      {/* =========================
+          STAGE 2
+          Isuzu Video Loader
+      ========================== */}
+      {stage === 1 && (
+        <Loader
+          onComplete={videoLoaderDone}
+        />
+      )}
+
+      {/* Grain */}
       <div
         className="grain"
         aria-hidden="true"
