@@ -127,25 +127,25 @@ export const profile = {
 
   // Placeholders — replace image/title/issuer when the documents are provided.
   certificates: [
-    {
-      id: '01',
-      image: null,
-      title: null,
-      issuer: null,
-    },
-    {
-      id: '02',
-      image: null,
-      title: null,
-      issuer: null,
-    },
-    {
-      id: '03',
-      image: null,
-      title: null,
-      issuer: null,
-    },
-  ],
+  {
+    id: '01',
+    image: null,
+    title: 'Diploma in Sales Management',
+    issuer: 'Alison',
+  },
+  {
+    id: '02',
+    image: null,
+    title: 'Diploma in Operations Management',
+    issuer: 'Alison',
+  },
+  {
+    id: '03',
+    image: null,
+    title: 'Certificate of Appreciation — Community Service',
+    issuer: 'Seven for Organization',
+  },
+],
 
   language: {
     name: 'English',
