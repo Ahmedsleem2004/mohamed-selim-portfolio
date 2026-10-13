@@ -16,7 +16,7 @@ export const profile = {
   middle: 'SELIM',
   last: 'ISMAIL',
   title: 'Sales Manager',
-  company: 'Al-Dagal Waste Transportation & Contracting',
+  company: 'M.A.S-Development Waste Transportation & Contracting',
   location: 'Madinah, Saudi Arabia',
 
   // Set to a path such as '/portrait.jpg' when the professional portrait is available.
@@ -54,7 +54,7 @@ export const profile = {
     },
     {
       no: '03',
-      lines: ['AL-DAGAL'],
+      lines: ['M.A.S-Development','Company'],
       role: 'Sales Manager',
       years: 5,
       location: 'Madinah, Saudi Arabia',
@@ -116,7 +116,7 @@ export const profile = {
     {
       value: 5,
       suffix: '',
-      label: 'Years at Al-Dagal',
+      label: 'Years at M.A.S-Development',
     },
     {
       value: 3,

@@ -19,8 +19,8 @@ const arabicCareer = {
   roles: {
     'Al-Najm Al-Samawi': 'النجم السماوي',
     'Al Andalus Hotel': 'فندق الأندلس',
-    'Al-Dagal Waste Transportation & Contracting':
-      'الدقل للنقل والمقاولات',
+    'M.A.S-Development Waste Transportation & Contracting':
+      'شركة م.أ.س-التطوير',
   },
   jobTitles: {
     'Operations Manager': 'مدير العمليات',
@@ -35,7 +35,7 @@ const arabicCareer = {
 const arabicCompaniesByNumber = {
   '01': 'النجم السماوي',
   '02': 'فندق الأندلس',
-  '03': 'الدقل للنقل والمقاولات',
+  '03': 'م.ا.س للتطوير',
 }
 
 export default function CareerJourney() {

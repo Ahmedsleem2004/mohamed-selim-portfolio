@@ -124,7 +124,7 @@ export default function CurrentRole() {
           isArabic ? '-right-[4vw]' : '-left-[4vw]'
         }`}
       >
-        AL-DAGAL
+        M.A.S-Development
       </span>
 
       <div className="relative z-10 grid items-center gap-20 lg:grid-cols-12">
@@ -134,7 +134,7 @@ export default function CurrentRole() {
           </p>
 
           <h2 className="cr-reveal mt-6 font-display text-[clamp(3.4rem,13vw,11rem)] font-extrabold leading-[0.88] tracking-[-0.03em]">
-            AL-<span className="text-[var(--accent)]">DAGAL</span>
+            M.A.S-<span className="text-[var(--accent)]">Development</span>
           </h2>
 
           <p className="cr-reveal mt-8 text-2xl font-semibold text-[var(--text-primary)] md:text-4xl">
@@ -143,7 +143,7 @@ export default function CurrentRole() {
 
           <p className="cr-reveal mt-3 text-[11px] tracking-[0.15em] text-[var(--text-muted)]">
             {isArabic
-              ? 'الدقل للنقل والمقاولات · ٥ سنوات'
+              ? 'م.ا.س للتطوير · ٥ سنوات'
               : `${profile.company} · 5 years`}
           </p>
 
