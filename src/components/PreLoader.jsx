@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react'
 import { gsap } from '../lib/gsap'
 
@@ -17,46 +18,50 @@ export default function PreLoader({ onComplete }) {
     const glow = glowRef.current
     const text = textRef.current
 
-    if (!root || !anchor || !ring || !progress || !glow || !text) return
+    if (!root || !anchor || !ring || !progress || !glow || !text) {
+      onComplete?.()
+      return
+    }
+
+    let completed = false
+    let fallback
+
+    const completePreLoader = () => {
+      if (completed) return
+      completed = true
+      window.clearTimeout(fallback)
+      onComplete?.()
+    }
+
+    // Safety fallback
+    fallback = window.setTimeout(completePreLoader, 5000)
 
     const ctx = gsap.context(() => {
-      gsap.set(root, {
-        autoAlpha: 1,
-      })
-
+      gsap.set(root, { autoAlpha: 1 })
       gsap.set(anchor, {
         opacity: 0,
         scale: 0.55,
         y: 20,
         rotation: -8,
       })
-
       gsap.set(text, {
         opacity: 0,
         y: 12,
         letterSpacing: '0.8em',
       })
-
       gsap.set(ring, {
         opacity: 0,
         scale: 0.7,
         rotation: -90,
       })
-
       gsap.set(progress, {
         scaleX: 0,
         transformOrigin: 'left center',
       })
-
-      gsap.set(glow, {
-        opacity: 0,
-        scale: 0.5,
-      })
+      gsap.set(glow, { opacity: 0, scale: 0.5 })
 
       const tl = gsap.timeline({
-        onComplete: () => {
-          onComplete?.()
-        },
+        onComplete: completePreLoader,
       })
 
       tl.to(glow, {
@@ -65,7 +70,6 @@ export default function PreLoader({ onComplete }) {
         duration: 0.5,
         ease: 'power2.out',
       })
-
         .to(
           ring,
           {
@@ -77,7 +81,6 @@ export default function PreLoader({ onComplete }) {
           },
           '-=0.25',
         )
-
         .to(
           anchor,
           {
@@ -90,7 +93,6 @@ export default function PreLoader({ onComplete }) {
           },
           '-=0.55',
         )
-
         .to(
           text,
           {
@@ -102,7 +104,6 @@ export default function PreLoader({ onComplete }) {
           },
           '-=0.35',
         )
-
         .to(
           progress,
           {
@@ -112,19 +113,16 @@ export default function PreLoader({ onComplete }) {
           },
           '-=0.2',
         )
-
         .to(anchor, {
           y: -5,
           duration: 0.35,
           ease: 'sine.inOut',
         })
-
         .to(anchor, {
           y: 0,
           duration: 0.35,
           ease: 'sine.inOut',
         })
-
         .to(
           [anchor, ring, glow, text],
           {
@@ -135,7 +133,6 @@ export default function PreLoader({ onComplete }) {
           },
           '+=0.03',
         )
-
         .to(
           root,
           {
@@ -164,6 +161,7 @@ export default function PreLoader({ onComplete }) {
     })
 
     return () => {
+      window.clearTimeout(fallback)
       ctx.revert()
       spin.kill()
       pulse.kill()
@@ -208,9 +206,7 @@ export default function PreLoader({ onComplete }) {
               boxShadow: '0 0 12px rgba(201,162,39,0.8)',
             }}
           />
-
           <span className="absolute inset-[10px] rounded-full border border-white/[0.035]" />
-
           <span className="absolute left-1/2 top-[-8px] h-4 w-px -translate-x-1/2 bg-[#c9a227]/40" />
           <span className="absolute bottom-[-8px] left-1/2 h-4 w-px -translate-x-1/2 bg-[#c9a227]/20" />
           <span className="absolute left-[-8px] top-1/2 h-px w-4 -translate-y-1/2 bg-[#c9a227]/20" />
@@ -232,91 +228,18 @@ export default function PreLoader({ onComplete }) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <circle
-              cx="41"
-              cy="10"
-              r="7"
-              stroke="#c9a227"
-              strokeWidth="1.8"
-            />
-
-            <circle
-              cx="41"
-              cy="10"
-              r="2.2"
-              fill="#c9a227"
-            />
-
-            <path
-              d="M41 17V61"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M25 30H57"
-              stroke="#c9a227"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M41 61C41 61 31 61 23 54C17 49 15 42 15 35"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M41 61C41 61 51 61 59 54C65 49 67 42 67 35"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M15 35L9 41"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M15 35L21 41"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M67 35L61 41"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M67 35L73 41"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-
-            <path
-              d="M31 66L41 78L51 66"
-              stroke="#c9a227"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-
-            <circle
-              cx="41"
-              cy="61"
-              r="2"
-              fill="#c9a227"
-            />
+            <circle cx="41" cy="10" r="7" stroke="#c9a227" strokeWidth="1.8" />
+            <circle cx="41" cy="10" r="2.2" fill="#c9a227" />
+            <path d="M41 17V61" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M25 30H57" stroke="#c9a227" strokeWidth="2" strokeLinecap="round" />
+            <path d="M41 61C41 61 31 61 23 54C17 49 15 42 15 35" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M41 61C41 61 51 61 59 54C65 49 67 42 67 35" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M15 35L9 41" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M15 35L21 41" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M67 35L61 41" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M67 35L73 41" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M31 66L41 78L51 66" stroke="#c9a227" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="41" cy="61" r="2" fill="#c9a227" />
           </svg>
         </div>
 

@@ -1,15 +1,16 @@
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { gsap } from '../lib/gsap'
 
 export default function Loader({ onComplete }) {
   const loaderRef = useRef(null)
   const videoRef = useRef(null)
   const hasFinished = useRef(false)
+  const progressRef = useRef(0)
 
   const [progress, setProgress] = useState(0)
 
-  const finishLoader = () => {
+  const finishLoader = useCallback(() => {
     if (hasFinished.current) return
 
     hasFinished.current = true
@@ -20,23 +21,21 @@ export default function Loader({ onComplete }) {
       video.pause()
     }
 
+    const root = loaderRef.current
+
+    if (!root) {
+      onComplete?.()
+      return
+    }
+
     const tl = gsap.timeline({
       onComplete: () => {
         onComplete?.()
       },
     })
 
-    /*
-      ---------------------------------------------------------
-      FINAL EXIT
-      Everything disappears before the portfolio is revealed.
-      This prevents the loader text from visually overlapping
-      with the Hero text.
-      ---------------------------------------------------------
-    */
-
     tl.to(
-      '.loader-word',
+      root.querySelectorAll('.loader-word'),
       {
         y: -35,
         opacity: 0,
@@ -46,9 +45,8 @@ export default function Loader({ onComplete }) {
       },
       0,
     )
-
       .to(
-        '.loader-role',
+        root.querySelector('.loader-role'),
         {
           y: -15,
           opacity: 0,
@@ -57,9 +55,8 @@ export default function Loader({ onComplete }) {
         },
         0.05,
       )
-
       .to(
-        '.loader-top',
+        root.querySelector('.loader-top'),
         {
           opacity: 0,
           y: -10,
@@ -67,9 +64,8 @@ export default function Loader({ onComplete }) {
         },
         0,
       )
-
       .to(
-        '.loader-progress',
+        root.querySelector('.loader-progress'),
         {
           opacity: 0,
           y: 15,
@@ -78,30 +74,26 @@ export default function Loader({ onComplete }) {
         },
         0,
       )
-
       .to(
-        '.loader-video',
+        root.querySelector('.loader-video'),
         {
           scale: 1.08,
-          filter:
-            'brightness(0.08) contrast(1.15) saturate(0.45)',
+          filter: 'brightness(0.08) contrast(1.15) saturate(0.45)',
           duration: 0.8,
           ease: 'power3.inOut',
         },
         0,
       )
-
       .to(
-        '.loader-dark',
+        root.querySelector('.loader-dark'),
         {
           opacity: 0.92,
           duration: 0.45,
         },
         0,
       )
-
       .to(
-        loaderRef.current,
+        root,
         {
           clipPath: 'inset(0 0 100% 0)',
           duration: 1.15,
@@ -109,135 +101,183 @@ export default function Loader({ onComplete }) {
         },
         0.35,
       )
-  }
+  }, [onComplete])
 
+  // Video playback and stall protection.
   useEffect(() => {
     const video = videoRef.current
 
-    if (!video) return undefined
+    if (!video) return
 
-    let fallback
+    let startTimer
+    let stallTimer
+    let started = false
 
-    const startVideo = () => {
-      video.currentTime = 0
+    const clearStallTimer = () => {
+      window.clearTimeout(stallTimer)
+    }
 
-      const playPromise = video.play()
+    const handlePlaying = () => {
+      started = true
+      window.clearTimeout(startTimer)
+      clearStallTimer()
+    }
 
-      if (playPromise?.catch) {
-        playPromise.catch(() => {})
+    const handleWaiting = () => {
+      if (!started || hasFinished.current) return
+
+      clearStallTimer()
+
+      // If buffering lasts too long, exit the loader gracefully.
+      stallTimer = window.setTimeout(() => {
+        if (video.readyState < 3) {
+          finishLoader()
+        }
+      }, 4000)
+    }
+
+    const startVideo = async () => {
+      if (started || hasFinished.current) return
+
+      started = true
+
+      try {
+        const playPromise = video.play()
+
+        if (playPromise) {
+          await playPromise
+        }
+      } catch (error) {
+        if (!hasFinished.current) {
+          console.error('Loader video playback failed:', error)
+          finishLoader()
+        }
       }
-
-      /*
-        Safety fallback.
-        Even if the browser doesn't fire video events correctly,
-        the loader will still finish.
-      */
-      fallback = window.setTimeout(() => {
-        setProgress(100)
-        finishLoader()
-      }, 6100)
     }
 
     const handleTimeUpdate = () => {
-      if (!video.duration || Number.isNaN(video.duration)) {
+      if (
+        !Number.isFinite(video.duration) ||
+        video.duration <= 0
+      ) {
         return
       }
 
-      const value = Math.min(
-        100,
-        Math.round(
-          (video.currentTime / video.duration) * 100,
-        ),
+      const nextProgress = Math.min(
+        99,
+        Math.floor((video.currentTime / video.duration) * 100),
       )
 
-      setProgress(value)
-
-      if (value >= 100) {
-        finishLoader()
+      // Update React only when the displayed percentage changes.
+      if (nextProgress !== progressRef.current) {
+        progressRef.current = nextProgress
+        setProgress(nextProgress)
       }
     }
 
     const handleEnded = () => {
+      progressRef.current = 100
       setProgress(100)
       finishLoader()
     }
 
-    video.addEventListener('loadedmetadata', startVideo)
+    const handleError = () => {
+      console.error('Loader video failed to load:', video.error)
+      finishLoader()
+    }
+
+    video.muted = true
+    video.defaultMuted = true
+    video.playsInline = true
+    video.loop = false
+
+    video.addEventListener('playing', handlePlaying)
+    video.addEventListener('loadeddata', startVideo)
+    video.addEventListener('canplay', startVideo)
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('ended', handleEnded)
+    video.addEventListener('error', handleError)
+    video.addEventListener('waiting', handleWaiting)
+    video.addEventListener('stalled', handleWaiting)
+
+    if (video.readyState >= 2) {
+      startVideo()
+    }
+
+    // Fallback only if playback never begins.
+    startTimer = window.setTimeout(() => {
+      if (!started || (video.paused && video.currentTime === 0)) {
+        finishLoader()
+      }
+    }, 10000)
 
     return () => {
-      video.removeEventListener(
-        'loadedmetadata',
-        startVideo,
-      )
+      window.clearTimeout(startTimer)
+      clearStallTimer()
 
-      video.removeEventListener(
-        'timeupdate',
-        handleTimeUpdate,
-      )
-
-      video.removeEventListener(
-        'ended',
-        handleEnded,
-      )
-
-      if (fallback) {
-        clearTimeout(fallback)
-      }
+      video.removeEventListener('playing', handlePlaying)
+      video.removeEventListener('loadeddata', startVideo)
+      video.removeEventListener('canplay', startVideo)
+      video.removeEventListener('timeupdate', handleTimeUpdate)
+      video.removeEventListener('ended', handleEnded)
+      video.removeEventListener('error', handleError)
+      video.removeEventListener('waiting', handleWaiting)
+      video.removeEventListener('stalled', handleWaiting)
     }
-  }, [])
+  }, [finishLoader])
 
-  /*
-    Smooth progress animation
-  */
+  // Smooth progress animation.
   useEffect(() => {
-    gsap.to('.loader-progress-fill', {
-      width: `${progress}%`,
-      duration: 0.3,
-      ease: 'power2.out',
-    })
+    const root = loaderRef.current
+    if (!root) return
 
-    const number = document.querySelector(
-      '.loader-number',
-    )
+    const fill = root.querySelector('.loader-progress-fill')
+    const number = root.querySelector('.loader-number')
+
+    const tweens = []
+
+    if (fill) {
+      tweens.push(
+        gsap.to(fill, {
+          width: `${progress}%`,
+          duration: 0.3,
+          ease: 'power2.out',
+        }),
+      )
+    }
 
     if (number) {
-      gsap.to(number, {
-        innerText: progress,
-        duration: 0.25,
-        ease: 'none',
-        snap: {
-          innerText: 1,
-        },
-        onUpdate: () => {
-          number.innerText = String(
-            Math.round(Number(number.innerText)),
-          ).padStart(2, '0')
-        },
-      })
+      tweens.push(
+        gsap.to(number, {
+          innerText: progress,
+          duration: 0.25,
+          ease: 'none',
+          snap: { innerText: 1 },
+          onUpdate: () => {
+            number.innerText = String(
+              Math.round(Number(number.innerText)),
+            ).padStart(2, '0')
+          },
+        }),
+      )
+    }
+
+    return () => {
+      tweens.forEach((tween) => tween.kill())
     }
   }, [progress])
 
-  /*
-    ---------------------------------------------------------
-    INITIAL TEXT ANIMATION
-    Words appear one after another.
-    ---------------------------------------------------------
-  */
-
+  // Initial text animation.
   useEffect(() => {
-    const intro = gsap.timeline({
-      delay: 0.45,
-    })
+    const root = loaderRef.current
+    if (!root) return
+
+    const intro = gsap.timeline({ delay: 0.45 })
 
     intro
       .fromTo(
-        '.loader-small-label',
-        {
-          opacity: 0,
-          y: 12,
-        },
+        root.querySelector('.loader-small-label'),
+        { opacity: 0, y: 12 },
         {
           opacity: 1,
           y: 0,
@@ -245,9 +285,8 @@ export default function Loader({ onComplete }) {
           ease: 'power3.out',
         },
       )
-
       .fromTo(
-        '.loader-word',
+        root.querySelectorAll('.loader-word'),
         {
           opacity: 0,
           y: 55,
@@ -263,9 +302,8 @@ export default function Loader({ onComplete }) {
         },
         '-=0.15',
       )
-
       .fromTo(
-        '.loader-line',
+        root.querySelector('.loader-line'),
         {
           scaleX: 0,
           transformOrigin: 'center',
@@ -277,9 +315,8 @@ export default function Loader({ onComplete }) {
         },
         '-=0.3',
       )
-
       .fromTo(
-        '.loader-role',
+        root.querySelector('.loader-role'),
         {
           opacity: 0,
           y: 18,
@@ -304,14 +341,9 @@ export default function Loader({ onComplete }) {
     <div
       ref={loaderRef}
       className="fixed inset-0 z-[99999] overflow-hidden bg-[#030303]"
-      style={{
-        clipPath: 'inset(0 0 0 0)',
-      }}
+      style={{ clipPath: 'inset(0 0 0 0)' }}
     >
-      {/* =====================================================
-          VIDEO
-      ====================================================== */}
-
+      {/* Video */}
       <video
         ref={videoRef}
         className="loader-video absolute inset-0 h-full w-full object-cover"
@@ -321,13 +353,9 @@ export default function Loader({ onComplete }) {
         preload="auto"
       />
 
-      {/* =====================================================
-          DARK CINEMATIC TREATMENT
-      ====================================================== */}
-
+      {/* Dark cinematic treatment */}
       <div className="loader-dark absolute inset-0 bg-black/55" />
 
-      {/* Left cinematic shadow */}
       <div
         className="absolute inset-y-0 left-0 w-[75%]"
         style={{
@@ -336,7 +364,6 @@ export default function Loader({ onComplete }) {
         }}
       />
 
-      {/* Bottom shadow */}
       <div
         className="absolute inset-x-0 bottom-0 h-[55%]"
         style={{
@@ -345,7 +372,6 @@ export default function Loader({ onComplete }) {
         }}
       />
 
-      {/* Top shadow */}
       <div
         className="absolute inset-x-0 top-0 h-[30%]"
         style={{
@@ -354,7 +380,6 @@ export default function Loader({ onComplete }) {
         }}
       />
 
-      {/* Strong vignette */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -363,29 +388,21 @@ export default function Loader({ onComplete }) {
         }}
       />
 
-      {/* =====================================================
-          GOLD LIGHT SWEEP
-      ====================================================== */}
-
+      {/* Gold light sweep */}
       <div
         className="pointer-events-none absolute -left-[40%] top-[-20%] h-[150%] w-[25%] opacity-[0.14]"
         style={{
           background:
             'linear-gradient(90deg, transparent, rgba(201,162,39,.8), transparent)',
           transform: 'skewX(-18deg)',
-          animation:
-            'luxuryGoldSweep 5.5s ease-in-out infinite',
+          animation: 'luxuryGoldSweep 5.5s ease-in-out infinite',
         }}
       />
 
-      {/* =====================================================
-          TOP BAR
-      ====================================================== */}
-
+      {/* Top bar */}
       <div className="loader-top absolute left-6 right-6 top-6 flex items-center justify-between md:left-12 md:right-12 md:top-9">
         <div className="flex items-center gap-3">
           <span className="h-px w-9 bg-[#C9A227] md:w-16" />
-
           <span className="text-[8px] uppercase tracking-[0.5em] text-white/45 md:text-[9px]">
             Executive Portfolio
           </span>
@@ -395,45 +412,27 @@ export default function Loader({ onComplete }) {
           <span className="text-[8px] tracking-[0.35em] text-white/25">
             MADINAH
           </span>
-
           <span className="h-1 w-1 rounded-full bg-[#C9A227]" />
-
           <span className="text-[8px] tracking-[0.35em] text-white/25">
             2026
           </span>
         </div>
       </div>
 
-      {/* =====================================================
-          CENTER CONTENT
-      ====================================================== */}
-
+      {/* Center content */}
       <div className="absolute inset-0 flex items-center justify-center px-6">
         <div className="relative text-center">
-
-          {/* Small label */}
-
           <div className="loader-small-label mb-7 flex items-center justify-center gap-4 opacity-0 md:mb-9">
             <span className="h-px w-8 bg-[#C9A227]/50 md:w-14" />
-
             <span className="text-[8px] uppercase tracking-[0.55em] text-[#C9A227] md:text-[9px]">
               Leadership · Sales · Operations
             </span>
-
             <span className="h-px w-8 bg-[#C9A227]/50 md:w-14" />
           </div>
 
-          {/* =================================================
-              NAME
-              Each word appears separately.
-          ================================================== */}
-
           <div
             className="font-serif uppercase"
-            style={{
-              fontFamily:
-                'Georgia, "Times New Roman", serif',
-            }}
+            style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
           >
             <div className="loader-word overflow-hidden text-[clamp(3rem,8vw,7.5rem)] font-normal leading-[0.78] tracking-[-0.045em] text-white">
               MOHAMED
@@ -448,17 +447,12 @@ export default function Loader({ onComplete }) {
             </div>
           </div>
 
-          {/* Gold divider */}
-
           <div className="loader-line mx-auto mt-8 h-px w-24 bg-[#C9A227] md:mt-10 md:w-40" />
-
-          {/* Role */}
 
           <div className="loader-role mt-6 opacity-0">
             <p className="text-[9px] font-semibold uppercase tracking-[0.5em] text-white md:text-xs">
               SALES MANAGER
             </p>
-
             <p className="mt-3 text-[7px] uppercase tracking-[0.45em] text-white/35 md:text-[8px]">
               MADINAH · SAUDI ARABIA
             </p>
@@ -466,20 +460,15 @@ export default function Loader({ onComplete }) {
         </div>
       </div>
 
-      {/* =====================================================
-          PROGRESS
-      ====================================================== */}
-
+      {/* Progress */}
       <div className="loader-progress absolute bottom-7 left-6 right-6 md:bottom-10 md:left-12 md:right-12">
         <div className="mb-3 flex items-end justify-between">
           <div>
             <p className="text-[7px] uppercase tracking-[0.55em] text-white/25">
               Loading Experience
             </p>
-
             <div className="mt-2 flex items-center gap-2">
               <span className="h-1 w-1 rounded-full bg-[#C9A227]" />
-
               <span className="text-[7px] uppercase tracking-[0.4em] text-[#C9A227]/65">
                 Preparing Portfolio
               </span>
@@ -490,14 +479,9 @@ export default function Loader({ onComplete }) {
             <span className="loader-number font-display text-3xl font-medium tracking-[-0.04em] text-white md:text-4xl">
               00
             </span>
-
-            <span className="ml-1 text-xs text-[#C9A227]">
-              %
-            </span>
+            <span className="ml-1 text-xs text-[#C9A227]">%</span>
           </div>
         </div>
-
-        {/* Progress bar */}
 
         <div className="relative h-px w-full overflow-hidden bg-white/[0.12]">
           <div
@@ -505,8 +489,7 @@ export default function Loader({ onComplete }) {
             style={{
               background:
                 'linear-gradient(90deg, #7f6416, #C9A227, #fff)',
-              boxShadow:
-                '0 0 14px rgba(201,162,39,.8)',
+              boxShadow: '0 0 14px rgba(201,162,39,.8)',
             }}
           />
         </div>
@@ -515,17 +498,13 @@ export default function Loader({ onComplete }) {
           <span className="text-[6px] uppercase tracking-[0.5em] text-white/15">
             M.S.I
           </span>
-
           <span className="text-[6px] uppercase tracking-[0.5em] text-white/15">
             10+ YEARS
           </span>
         </div>
       </div>
 
-      {/* =====================================================
-          FILM GRAIN
-      ====================================================== */}
-
+      {/* Film grain */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.035]"
         style={{
@@ -536,7 +515,6 @@ export default function Loader({ onComplete }) {
       />
 
       {/* Cinematic frame */}
-
       <div className="pointer-events-none absolute inset-4 border border-white/[0.045] md:inset-7" />
 
       <style>{`

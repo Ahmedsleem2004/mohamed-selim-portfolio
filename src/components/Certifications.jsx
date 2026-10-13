@@ -1,6 +1,12 @@
+
 import { useLayoutEffect, useRef } from 'react'
-import { gsap, isFinePointer, prefersReducedMotion } from '../lib/gsap'
+import {
+  gsap,
+  isFinePointer,
+  prefersReducedMotion,
+} from '../lib/gsap'
 import { profile } from '../data/profile'
+import { useSitePreferences } from '../context/SitePreferences'
 
 import salesCertificate from '../assets/certificate-sales-management.jpeg'
 import operationsCertificate from '../assets/certificate-operations-management.jpeg'
@@ -12,30 +18,38 @@ const certificates = [
     image: salesCertificate,
     title: 'Diploma in Sales Management',
     issuer: 'Alison',
+    arabicTitle: 'دبلوم إدارة المبيعات',
+    arabicIssuer: 'أليسون',
   },
   {
     ...profile.certificates[1],
     image: operationsCertificate,
     title: 'Diploma in Operations Management',
     issuer: 'Alison',
+    arabicTitle: 'دبلوم إدارة العمليات',
+    arabicIssuer: 'أليسون',
   },
   {
     ...profile.certificates[2],
     image: oop,
     title: 'Certificate of Appreciation — Community Service',
     issuer: 'Seven for Organization',
+    arabicTitle: 'شهادة تقدير — خدمة المجتمع',
+    arabicIssuer: 'Seven for Organization',
   },
 ]
 
-function Frame({ item, offset }) {
+function Frame({ item, offset, isArabic }) {
   const el = useRef(null)
   const fine = isFinePointer() && !prefersReducedMotion()
 
+  const title = isArabic ? item.arabicTitle : item.title
+  const issuer = isArabic ? item.arabicIssuer : item.issuer
+
   const onMove = (e) => {
-    if (!fine) return
+    if (!fine || !el.current) return
 
     const r = el.current.getBoundingClientRect()
-
     const nx = (e.clientX - r.left) / r.width - 0.5
     const ny = (e.clientY - r.top) / r.height - 0.5
 
@@ -49,7 +63,7 @@ function Frame({ item, offset }) {
   }
 
   const onLeave = () => {
-    if (!fine) return
+    if (!fine || !el.current) return
 
     gsap.to(el.current, {
       rotationY: 0,
@@ -60,51 +74,57 @@ function Frame({ item, offset }) {
   }
 
   return (
-    <figure className={`ar-frame ${offset}`}>
+    <figure className={`ar-frame ${offset}`} dir={isArabic ? 'rtl' : 'ltr'}>
       <div
         ref={el}
         data-cursor
         onMouseMove={onMove}
         onMouseLeave={onLeave}
-        className="relative aspect-[4/3] w-full overflow-hidden border border-white/15 bg-coal shadow-gold"
+        className="relative aspect-[4/3] w-full overflow-hidden border border-[var(--border-color)] bg-[var(--surface-bg)] shadow-gold"
       >
         {item.image ? (
           <img
             src={item.image}
-            alt={item.title || `Certificate ${item.id}`}
+            alt={title || `Certificate ${item.id}`}
             className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.025]"
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="absolute inset-3 border border-gold/20" />
+            <div className="absolute inset-3 border border-[var(--accent)]/20" />
 
-            <span className="absolute left-3 top-3 h-4 w-4 border-l border-t border-gold" />
-            <span className="absolute right-3 top-3 h-4 w-4 border-r border-t border-gold" />
-            <span className="absolute bottom-3 left-3 h-4 w-4 border-b border-l border-gold" />
-            <span className="absolute bottom-3 right-3 h-4 w-4 border-b border-r border-gold" />
+            <span className="absolute left-3 top-3 h-4 w-4 border-l border-t border-[var(--accent)]" />
+            <span className="absolute right-3 top-3 h-4 w-4 border-r border-t border-[var(--accent)]" />
+            <span className="absolute bottom-3 left-3 h-4 w-4 border-b border-l border-[var(--accent)]" />
+            <span className="absolute bottom-3 right-3 h-4 w-4 border-b border-r border-[var(--accent)]" />
 
-            <p className="text-[11px] font-semibold tracking-[0.5em] text-gold">
-              CERTIFICATE
+            <p className="text-center text-[11px] font-semibold tracking-[0.25em] text-[var(--accent)]">
+              {isArabic ? 'شهادة' : 'CERTIFICATE'}
             </p>
 
             <p className="text-outline-gold mt-2 font-display text-7xl font-extrabold leading-none md:text-8xl">
               {item.id}
             </p>
 
-            <p className="absolute bottom-7 text-[9px] font-semibold uppercase tracking-[0.4em] text-white/30">
-              Placeholder · document to be added
+            <p className="absolute bottom-7 px-3 text-center text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--text-muted)]">
+              {isArabic
+                ? 'سيتم إضافة المستند'
+                : 'Placeholder · document to be added'}
             </p>
           </div>
         )}
       </div>
 
-      <figcaption className="mt-4 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.25em] text-white/40">
-        <span>
-          {item.title || `Certificate ${item.id}`}
+      <figcaption
+        className={`mt-4 flex items-start justify-between gap-4 text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)] ${
+          isArabic ? 'text-right' : 'text-left'
+        }`}
+      >
+        <span className="leading-relaxed">
+          {title || (isArabic ? `الشهادة ${item.id}` : `Certificate ${item.id}`)}
         </span>
 
-        <span className="shrink-0 text-gold/70">
-          {item.issuer || '—'}
+        <span className="shrink-0 text-[var(--accent)]">
+          {issuer || '—'}
         </span>
       </figcaption>
     </figure>
@@ -113,6 +133,8 @@ function Frame({ item, offset }) {
 
 export default function Certifications() {
   const root = useRef(null)
+  const { language } = useSitePreferences()
+  const isArabic = language === 'ar'
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -142,7 +164,7 @@ export default function Certifications() {
     }, root)
 
     return () => ctx.revert()
-  }, [])
+  }, [isArabic])
 
   const offsets = ['', 'md:mt-24', 'md:mt-12']
 
@@ -150,22 +172,36 @@ export default function Certifications() {
     <section
       id="archive"
       ref={root}
-      className="relative bg-ink px-6 py-32 md:px-12 md:py-48"
+      dir={isArabic ? 'rtl' : 'ltr'}
+      className="relative bg-[var(--page-bg)] px-6 py-32 text-[var(--text-primary)] md:px-12 md:py-48"
     >
       <p className="ar-head eyebrow">
-        06 — Certifications
+        {isArabic ? '٠٦ — الشهادات' : '06 — Certifications'}
       </p>
 
-      <h2 className="ar-head mt-6 font-display text-[clamp(2.4rem,8vw,7.5rem)] font-extrabold leading-[0.92] tracking-[-0.02em]">
-        PROFESSIONAL
-        <br />
-        <span className="text-gold">
-          ARCHIVE
-        </span>
+      <h2 className="ar-head mt-6 font-display text-[clamp(2.4rem,8vw,7.5rem)] font-extrabold leading-[1.1] tracking-[-0.02em]">
+        {isArabic ? (
+          <>
+            <span className="block">المسيرة</span>
+            <span className="block text-[var(--accent)]">
+              المهنية
+            </span>
+          </>
+        ) : (
+          <>
+            PROFESSIONAL
+            <br />
+            <span className="text-[var(--accent)]">
+              ARCHIVE
+            </span>
+          </>
+        )}
       </h2>
 
-      <p className="ar-head mt-6 text-sm tracking-[0.2em] text-white/50 md:text-base">
-        Certifications &amp; Qualifications
+      <p className="ar-head mt-6 text-sm tracking-[0.08em] text-[var(--text-muted)] md:text-base">
+        {isArabic
+          ? 'الشهادات والمؤهلات المهنية'
+          : 'Certifications & Qualifications'}
       </p>
 
       <div className="ar-grid mt-16 grid gap-12 md:mt-24 md:grid-cols-3 md:gap-8">
@@ -174,6 +210,7 @@ export default function Certifications() {
             key={certificate.id}
             item={certificate}
             offset={offsets[i % offsets.length]}
+            isArabic={isArabic}
           />
         ))}
       </div>

@@ -1,11 +1,14 @@
+
 import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Edges, PerformanceMonitor } from '@react-three/drei'
 import * as THREE from 'three'
 import { prefersReducedMotion } from '../lib/gsap'
 
-const GOLD = '#C9A227'
-const GOLD_LIGHT = '#E0BD3D'
+const GOLD = '#E10600'
+const GOLD_LIGHT = '#FF2929'
+
+const RED_EMISSIVE = '#5C0000'
 
 // Small deterministic RNG so the skyline is identical on every load.
 function rng(seed) {
@@ -19,35 +22,45 @@ function rng(seed) {
   }
 }
 
-// If WebGL is unavailable the hero simply falls back to its CSS background.
+// If WebGL is unavailable, the hero uses its CSS background.
 class SceneBoundary extends Component {
   state = { failed: false }
+
   static getDerivedStateFromError() {
     return { failed: true }
   }
+
   componentDidCatch() {}
+
   render() {
     return this.state.failed ? null : this.props.children
   }
 }
 
-/** Low-poly field of dark metallic towers with gold edge lines. */
-function Skyline({ count }) {
+/** Low-poly field of towers with theme-aware metallic materials. */
+function Skyline({ count, lightMode }) {
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
+
   const dark = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#101010', metalness: 0.85, roughness: 0.32 }),
-    [],
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: lightMode ? '#d9d9d9' : '#101010',
+        metalness: 0.65,
+        roughness: 0.4,
+      }),
+    [lightMode],
   )
+
   const accent = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#1a1405',
-        metalness: 1,
-        roughness: 0.28,
-        emissive: '#2a1f04',
-        emissiveIntensity: 0.6,
+        color: lightMode ? '#eee5ce' : '#1a1405',
+        metalness: 0.8,
+        roughness: 0.3,
+        emissive: lightMode ? '#bba56a' : '#2a1f04',
+        emissiveIntensity: lightMode ? 0.15 : 0.6,
       }),
-    [],
+    [lightMode],
   )
 
   useEffect(
@@ -62,8 +75,10 @@ function Skyline({ count }) {
   const towers = useMemo(() => {
     const r = rng(11)
     const out = []
+
     for (let i = 0; i < count; i++) {
       const row = i % 4
+
       out.push({
         x: (r() - 0.5) * 40,
         z: -2 - row * 5.5 - r() * 3,
@@ -73,20 +88,32 @@ function Skyline({ count }) {
         accent: r() > 0.88,
       })
     }
+
     return out
   }, [count])
 
   return (
     <group>
-      {towers.map((t, i) => (
+      {towers.map((tower, i) => (
         <mesh
           key={i}
           geometry={geometry}
-          material={t.accent ? accent : dark}
-          position={[t.x, t.h / 2, t.z]}
-          scale={[t.w, t.h, t.d]}
+          material={tower.accent ? accent : dark}
+          position={[tower.x, tower.h / 2, tower.z]}
+          scale={[tower.w, tower.h, tower.d]}
         >
-          <Edges threshold={15} color={t.accent ? GOLD : '#2b2410'} />
+          <Edges
+            threshold={15}
+            color={
+              tower.accent
+                ? lightMode
+                  ? '#b58a19'
+                  : GOLD
+                : lightMode
+                  ? '#b7b7b7'
+                  : '#2b2410'
+            }
+          />
         </mesh>
       ))}
     </group>
@@ -94,20 +121,23 @@ function Skyline({ count }) {
 }
 
 /** Signature golden twisted tower — stacked glass floors with gold edges. */
-function TwistedTower({ floors }) {
+function TwistedTower({ floors, lightMode }) {
   const group = useRef()
+
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
+
   const glass = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#0b0b0b',
-        metalness: 1,
-        roughness: 0.18,
+        color: lightMode ? '#e9e9e9' : '#0b0b0b',
+        metalness: 0.8,
+        roughness: lightMode ? 0.3 : 0.18,
         transparent: true,
-        opacity: 0.78,
+        opacity: lightMode ? 0.9 : 0.78,
       }),
-    [],
+    [lightMode],
   )
+
   const reduced = useMemo(() => prefersReducedMotion(), [])
 
   useEffect(
@@ -123,12 +153,16 @@ function TwistedTower({ floors }) {
     group.current.rotation.y = state.clock.elapsedTime * 0.04
   })
 
-  const items = useMemo(() => Array.from({ length: floors }, (_, i) => i), [floors])
+  const items = useMemo(
+    () => Array.from({ length: floors }, (_, i) => i),
+    [floors],
+  )
 
   return (
     <group ref={group} position={[5.2, 0, -7]} scale={1.5}>
       {items.map((i) => {
         const k = 1 - i / (floors * 1.6)
+
         return (
           <mesh
             key={i}
@@ -138,10 +172,14 @@ function TwistedTower({ floors }) {
             rotation={[0, i * 0.13, 0]}
             scale={[2.6 * k, 0.14, 2.6 * k]}
           >
-            <Edges threshold={15} color={i % 4 === 0 ? GOLD_LIGHT : GOLD} />
+            <Edges
+              threshold={15}
+              color={i % 4 === 0 ? GOLD_LIGHT : GOLD}
+            />
           </mesh>
         )
       })}
+
       <mesh
         geometry={geometry}
         material={glass}
@@ -154,14 +192,28 @@ function TwistedTower({ floors }) {
   )
 }
 
-function Ground() {
+function Ground({ lightMode }) {
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -8]}>
         <planeGeometry args={[90, 90]} />
-        <meshStandardMaterial color="#070707" metalness={0.9} roughness={0.5} />
+
+        <meshStandardMaterial
+          color={lightMode ? '#eeeeee' : '#070707'}
+          metalness={lightMode ? 0.25 : 0.9}
+          roughness={0.5}
+        />
       </mesh>
-      <gridHelper args={[80, 40, '#2a2208', '#141414']} position={[0, 0.01, -10]} />
+
+      <gridHelper
+        args={[
+          80,
+          40,
+          lightMode ? '#c6a64b' : '#2a2208',
+          lightMode ? '#d8d8d8' : '#141414',
+        ]}
+        position={[0, 0.01, -10]}
+      />
     </group>
   )
 }
@@ -169,19 +221,23 @@ function Ground() {
 /** Sparse gold dust — a single Points draw call. */
 function Dust({ count }) {
   const ref = useRef()
+
   const positions = useMemo(() => {
     const r = rng(5)
     const arr = new Float32Array(count * 3)
+
     for (let i = 0; i < count; i++) {
       arr[i * 3] = (r() - 0.5) * 40
       arr[i * 3 + 1] = r() * 16
       arr[i * 3 + 2] = -r() * 26 + 4
     }
+
     return arr
   }, [count])
 
   useFrame((state) => {
     if (!ref.current) return
+
     const t = state.clock.elapsedTime
     ref.current.rotation.y = t * 0.012
     ref.current.position.y = Math.sin(t * 0.15) * 0.3
@@ -190,8 +246,14 @@ function Dust({ count }) {
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions}
+          itemSize={3}
+        />
       </bufferGeometry>
+
       <pointsMaterial
         color={GOLD_LIGHT}
         size={0.06}
@@ -204,17 +266,32 @@ function Dust({ count }) {
   )
 }
 
-function Lights() {
+function Lights({ lightMode }) {
   const sweep = useRef()
+
   useFrame((state) => {
     if (!sweep.current) return
-    sweep.current.position.x = Math.sin(state.clock.elapsedTime * 0.15) * 10
+    sweep.current.position.x =
+      Math.sin(state.clock.elapsedTime * 0.15) * 10
   })
+
   return (
     <>
-      <ambientLight intensity={0.25} />
-      <directionalLight position={[6, 12, 8]} intensity={1.3} color="#fff1c7" />
-      <pointLight ref={sweep} position={[-8, 5, -2]} intensity={70} distance={34} color={GOLD} />
+      <ambientLight intensity={lightMode ? 1.1 : 0.25} />
+
+      <directionalLight
+        position={[6, 12, 8]}
+        intensity={lightMode ? 1.7 : 1.3}
+        color={lightMode ? '#ffffff' : '#fff1c7'}
+      />
+
+      <pointLight
+        ref={sweep}
+        position={[-8, 5, -2]}
+        intensity={lightMode ? 35 : 70}
+        distance={34}
+        color={GOLD}
+      />
     </>
   )
 }
@@ -222,6 +299,7 @@ function Lights() {
 /** Slow camera drift + gentle mouse and scroll response. */
 function Rig({ input }) {
   const reduced = useMemo(() => prefersReducedMotion(), [])
+
   useFrame((state, delta) => {
     const cam = state.camera
     const t = state.clock.elapsedTime
@@ -229,40 +307,86 @@ function Rig({ input }) {
     const drift = reduced ? 0 : 1
 
     const tx = Math.sin(t * 0.09) * 1.1 * drift + mouse.x * 1.2
-    const ty = 3.4 + Math.cos(t * 0.07) * 0.25 * drift + mouse.y * 0.6 - scroll * 1.4
+    const ty =
+      3.4 +
+      Math.cos(t * 0.07) * 0.25 * drift +
+      mouse.y * 0.6 -
+      scroll * 1.4
     const tz = 13.5 + scroll * 11
 
     cam.position.x = THREE.MathUtils.damp(cam.position.x, tx, 2.2, delta)
     cam.position.y = THREE.MathUtils.damp(cam.position.y, ty, 2.2, delta)
     cam.position.z = THREE.MathUtils.damp(cam.position.z, tz, 2.2, delta)
+
     cam.lookAt(mouse.x * 0.5, 3.6 - scroll * 1.5, -5)
   })
+
   return null
 }
 
 export default function Scene3D({ input, active = true }) {
   const mobile = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 767px)').matches,
     [],
   )
+
   const [dpr, setDpr] = useState(mobile ? [1, 1.5] : [1, 1.75])
+
+  const [lightMode, setLightMode] = useState(() => {
+    if (typeof document === 'undefined') return false
+    return document.documentElement.dataset.theme === 'light'
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+
+    const updateTheme = () => {
+      setLightMode(root.dataset.theme === 'light')
+    }
+
+    const observer = new MutationObserver(updateTheme)
+
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
+
+    updateTheme()
+
+    return () => observer.disconnect()
+  }, [])
+
+  const background = lightMode ? '#f5f5f5' : '#050505'
+  const fogColor = lightMode ? '#f5f5f5' : '#050505'
 
   return (
     <SceneBoundary>
       <Canvas
         dpr={dpr}
         frameloop={active ? 'always' : 'never'}
-        gl={{ antialias: !mobile, powerPreference: 'high-performance' }}
-        camera={{ fov: 40, position: [0, 3.4, 13.5], near: 0.1, far: 70 }}
+        gl={{
+          antialias: !mobile,
+          powerPreference: 'high-performance',
+        }}
+        camera={{
+          fov: 40,
+          position: [0, 3.4, 13.5],
+          near: 0.1,
+          far: 70,
+        }}
       >
-        <color attach="background" args={['#050505']} />
-        <fog attach="fog" args={['#050505', 11, 40]} />
+        <color attach="background" args={[background]} />
+        <fog attach="fog" args={[fogColor, 11, 40]} />
+
         <PerformanceMonitor onDecline={() => setDpr([0.75, 1])} />
+
         <Rig input={input} />
-        <Lights />
-        <Ground />
-        <Skyline count={mobile ? 14 : 26} />
-        <TwistedTower floors={mobile ? 10 : 15} />
+        <Lights lightMode={lightMode} />
+        <Ground lightMode={lightMode} />
+        <Skyline count={mobile ? 14 : 26} lightMode={lightMode} />
+        <TwistedTower floors={mobile ? 10 : 15} lightMode={lightMode} />
         <Dust count={mobile ? 90 : 240} />
       </Canvas>
     </SceneBoundary>

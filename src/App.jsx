@@ -1,6 +1,7 @@
+
 import { useCallback, useEffect, useState } from 'react'
 import { ScrollTrigger } from './lib/gsap'
-
+import { SitePreferencesProvider } from './context/SitePreferences'
 import PreLoader from './components/PreLoader'
 import Loader from './components/Loader'
 import Cursor from './components/Cursor'
@@ -32,7 +33,18 @@ export default function App() {
 
   const loaderDone = stage === 2
 
-  // Always start at top
+  // Emergency fallback: show the portfolio after 12 seconds.
+  useEffect(() => {
+    const emergencyTimer = window.setTimeout(() => {
+      setStage(2)
+    }, 12000)
+
+    return () => {
+      window.clearTimeout(emergencyTimer)
+    }
+  }, [])
+
+  // Always start at the top.
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual'
@@ -41,7 +53,7 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [])
 
-  // Refresh ScrollTrigger when page resources are ready
+  // Refresh ScrollTrigger when page resources are ready.
   useEffect(() => {
     const refresh = () => {
       requestAnimationFrame(() => {
@@ -60,7 +72,7 @@ export default function App() {
     }
   }, [])
 
-  // Refresh after final loader
+  // Refresh after the final loader.
   useEffect(() => {
     if (!loaderDone) return
 
@@ -75,89 +87,69 @@ export default function App() {
   }, [loaderDone])
 
   return (
-    <>
-      {/* Cursor */}
-      <div
-        style={{
-          visibility: loaderDone ? 'visible' : 'hidden',
-        }}
-      >
-        <Cursor />
-      </div>
+    <SitePreferencesProvider>
+      <>
+        {/* Cursor */}
+        <div
+          style={{
+            visibility: loaderDone ? 'visible' : 'hidden',
+          }}
+        >
+          <Cursor />
+        </div>
 
-      {/* Navigation */}
-      <div
-        style={{
-          visibility: loaderDone ? 'visible' : 'hidden',
-        }}
-      >
-        <Navigation />
-      </div>
+        {/* Navigation */}
+        <div
+          style={{
+            visibility: loaderDone ? 'visible' : 'hidden',
+          }}
+        >
+          <Navigation />
+        </div>
 
-      {/* =========================
-          PORTFOLIO
-          Completely hidden until
-          video loader is finished.
-      ========================== */}
-      <main
-        className="relative"
-        style={{
-          visibility: loaderDone ? 'visible' : 'hidden',
-        }}
-      >
-        <Hero introReady={loaderDone} />
+        {/* Portfolio */}
+        <main
+          className="relative"
+          style={{
+            visibility: loaderDone ? 'visible' : 'hidden',
+          }}
+        >
+          <Hero introReady={loaderDone} />
+          <ExecutiveStatement />
+          <CareerJourney />
+          <CurrentRole />
+          <Expertise />
+          <Impact />
+          <Certifications />
+          <Language />
+          <Contact />
+        </main>
 
-        <ExecutiveStatement />
+        {/* Footer */}
+        <div
+          style={{
+            visibility: loaderDone ? 'visible' : 'hidden',
+          }}
+        >
+          <Footer />
+        </div>
 
-        <CareerJourney />
+        {/* Anchor PreLoader */}
+        {stage === 0 && (
+          <PreLoader onComplete={preLoaderDone} />
+        )}
 
-        <CurrentRole />
+        {/* Video Loader */}
+        {stage === 1 && (
+          <Loader onComplete={videoLoaderDone} />
+        )}
 
-        <Expertise />
-
-        <Impact />
-
-        <Certifications />
-
-        <Language />
-
-        <Contact />
-      </main>
-
-      {/* Footer */}
-      <div
-        style={{
-          visibility: loaderDone ? 'visible' : 'hidden',
-        }}
-      >
-        <Footer />
-      </div>
-
-      {/* =========================
-          STAGE 1
-          Anchor PreLoader
-      ========================== */}
-      {stage === 0 && (
-        <PreLoader
-          onComplete={preLoaderDone}
+        {/* Grain */}
+        <div
+          className="grain"
+          aria-hidden="true"
         />
-      )}
-
-      {/* =========================
-          STAGE 2
-          Isuzu Video Loader
-      ========================== */}
-      {stage === 1 && (
-        <Loader
-          onComplete={videoLoaderDone}
-        />
-      )}
-
-      {/* Grain */}
-      <div
-        className="grain"
-        aria-hidden="true"
-      />
-    </>
+      </>
+    </SitePreferencesProvider>
   )
 }
